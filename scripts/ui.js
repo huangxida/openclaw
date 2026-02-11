@@ -9,6 +9,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
 const uiDir = path.join(repoRoot, "ui");
 
+// Strip --import entries from NODE_OPTIONS to prevent child processes from
+// inheriting parent-specific loaders (e.g. proxy-bootstrap.mjs) that use
+// relative paths and break when cwd changes to ui/.
+function cleanEnv(env) {
+  const nodeOpts = env.NODE_OPTIONS;
+  if (!nodeOpts) {
+    return env;
+  }
+  const cleaned = nodeOpts.replace(/--import\s+\S+/g, "").trim();
+  return { ...env, NODE_OPTIONS: cleaned || undefined };
+}
+
 function usage() {
   // keep this tiny; it's invoked from npm scripts too
   process.stderr.write("Usage: node scripts/ui.js <install|dev|build|test> [...args]\n");
@@ -54,7 +66,7 @@ function run(cmd, args) {
   const child = spawn(cmd, args, {
     cwd: uiDir,
     stdio: "inherit",
-    env: process.env,
+    env: cleanEnv(process.env),
     shell: process.platform === "win32",
   });
   child.on("exit", (code, signal) => {
@@ -69,7 +81,7 @@ function runSync(cmd, args, envOverride) {
   const result = spawnSync(cmd, args, {
     cwd: uiDir,
     stdio: "inherit",
-    env: envOverride ?? process.env,
+    env: cleanEnv(envOverride ?? process.env),
     shell: process.platform === "win32",
   });
   if (result.signal) {

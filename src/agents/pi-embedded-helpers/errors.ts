@@ -11,11 +11,20 @@ export function isContextOverflowError(errorMessage?: string): boolean {
     return false;
   }
   const lower = errorMessage.toLowerCase();
-  const hasRequestSizeExceeds = lower.includes("request size exceeds");
+  const hasExceeds =
+    lower.includes("request size exceeds") ||
+    lower.includes("input exceeds") ||
+    lower.includes("exceeds the") ||
+    lower.includes("exceed");
   const hasContextWindow =
     lower.includes("context window") ||
     lower.includes("context length") ||
     lower.includes("maximum context length");
+  // Match "context overflow" only when it appears at the start of the string
+  // (possibly after whitespace), not embedded in conversation text like
+  // "Let's investigate the context overflow bug".
+  const hasContextOverflow =
+    lower.includes("context overflow:") || /(?:^|\n)\s*context overflow\b/.test(lower);
   return (
     lower.includes("request_too_large") ||
     lower.includes("request exceeds the maximum size") ||
@@ -23,9 +32,8 @@ export function isContextOverflowError(errorMessage?: string): boolean {
     lower.includes("maximum context length") ||
     lower.includes("prompt is too long") ||
     lower.includes("exceeds model context window") ||
-    (hasRequestSizeExceeds && hasContextWindow) ||
-    lower.includes("context overflow:") ||
-    lower.includes("context overflow") ||
+    (hasExceeds && hasContextWindow) ||
+    hasContextOverflow ||
     (lower.includes("413") && lower.includes("too large"))
   );
 }
