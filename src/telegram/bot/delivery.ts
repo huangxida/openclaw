@@ -332,6 +332,7 @@ export async function resolveMedia(
         url,
         fetchImpl,
         filePathHint: file.file_path,
+        pinDns: false,
       });
       const originalName = fetched.fileName ?? file.file_path;
       const saved = await saveMediaBuffer(
@@ -413,6 +414,9 @@ export async function resolveMedia(
     url,
     fetchImpl,
     filePathHint: file.file_path,
+    // Telegram media downloads are particularly sensitive to pinned DNS selecting an unreachable AAAA.
+    // Disable pinning to let undici handle address selection (Happy Eyeballs).
+    pinDns: false,
   });
   const originalName = fetched.fileName ?? file.file_path;
   const saved = await saveMediaBuffer(
