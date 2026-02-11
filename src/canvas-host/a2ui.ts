@@ -15,15 +15,32 @@ let resolvingA2uiRoot: Promise<string | null> | null = null;
 
 async function resolveA2uiRoot(): Promise<string | null> {
   const here = path.dirname(fileURLToPath(import.meta.url));
+  // Derive repo root from the entry script (process.argv[1]) when available.
+  // This is more reliable than process.cwd() under launchd/systemd where cwd
+  // may default to "/" when WorkingDirectory is not set.
+  const entryDir = process.argv[1] ? path.dirname(path.resolve(process.argv[1])) : null;
+  const entryRoot = entryDir ? path.resolve(entryDir, "..") : null;
+
   const candidates = [
     // Running from source (bun) or dist (tsc + copied assets).
     path.resolve(here, "a2ui"),
+    // Bundled into a flat dist/ chunk — assets at dist/canvas-host/a2ui.
+    path.resolve(here, "canvas-host", "a2ui"),
     // Running from dist without copied assets (fallback to source).
     path.resolve(here, "../../src/canvas-host/a2ui"),
+    // Same fallback when bundled into flat dist/ chunk (one level up).
+    path.resolve(here, "../src/canvas-host/a2ui"),
     // Running from repo root.
     path.resolve(process.cwd(), "src/canvas-host/a2ui"),
     path.resolve(process.cwd(), "dist/canvas-host/a2ui"),
   ];
+  // Resolve relative to entry script directory (e.g. dist/index.js → repo root).
+  if (entryRoot) {
+    candidates.push(
+      path.resolve(entryRoot, "src/canvas-host/a2ui"),
+      path.resolve(entryRoot, "dist/canvas-host/a2ui"),
+    );
+  }
   if (process.execPath) {
     candidates.unshift(path.resolve(path.dirname(process.execPath), "a2ui"));
   }
